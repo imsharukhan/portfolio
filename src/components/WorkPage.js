@@ -19,8 +19,8 @@ const Box = styled.div`
     width: 100vw;
     position: relative;
     display: flex;
-    overflow: hidden; /* Lock the screen */
-    touch-action: none; /* Crucial for mobile: prevents default browser bounce */
+    overflow: hidden; 
+    touch-action: none; 
 `;
 
 const Main = styled(motion.ul)`
@@ -29,10 +29,11 @@ const Main = styled(motion.ul)`
     left: calc(10rem + 15vw);
     display: flex;
     color: white;
+    will-change: transform; /* Hardware Acceleration */
 
     @media only screen and (${device.md}) {
         left: calc(2rem + 2vw);
-        top: 25%; /* Adjusted for better mobile centering */
+        top: 25%; 
     }
 `;
 
@@ -48,10 +49,7 @@ const container = {
     hidden: { opacity: 0 },
     show: {
         opacity: 1,
-        transition: {
-            staggerChildren: 0.5,
-            duration: 0.5,
-        },
+        transition: { staggerChildren: 0.5, duration: 0.5 },
     },
 };
 
@@ -62,30 +60,39 @@ const WorkPage = () => {
     useEffect(() => {
         let element = ref.current;
         let scrollAmount = 0;
+        let lerpAmount = 0;
         let touchStart = 0;
+        let animationFrameId;
 
         const updatePosition = (delta) => {
             scrollAmount += delta;
             const maxScroll = element.scrollWidth - window.innerWidth + 500;
-            
             if (scrollAmount < 0) scrollAmount = 0;
             if (scrollAmount > maxScroll) scrollAmount = maxScroll;
+        };
 
-            element.style.transform = `translateX(${-scrollAmount}px)`;
+        const render = () => {
+            // Lerp loop for buttery smooth motion (10% ease)
+            lerpAmount += (scrollAmount - lerpAmount) * 0.1;
             
-            if (reactIcon.current) {
-                reactIcon.current.style.transform = `rotate(${-scrollAmount}deg)`;
+            if (element) {
+                element.style.transform = `translateX(${-lerpAmount}px)`;
             }
+            if (reactIcon.current) {
+                reactIcon.current.style.transform = `rotate(${-lerpAmount}deg)`;
+            }
+            animationFrameId = requestAnimationFrame(render);
         };
 
         const handleWheel = (e) => {
             if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
                 updatePosition(e.deltaX);
+            } else {
+                updatePosition(e.deltaY); // Fallback for vertical mouse wheels
             }
             e.preventDefault();
         };
 
-        // MOBILE TOUCH LOGIC
         const handleTouchStart = (e) => {
             touchStart = e.touches[0].clientX;
         };
@@ -93,18 +100,19 @@ const WorkPage = () => {
         const handleTouchMove = (e) => {
             let touchEnd = e.touches[0].clientX;
             let touchDelta = touchStart - touchEnd;
-            
-            updatePosition(touchDelta * 1.2); // 1.2 is sensitivity
+            updatePosition(touchDelta * 1.5); // Sensitivity
             touchStart = touchEnd;
-            
             e.preventDefault();
         };
+
+        animationFrameId = requestAnimationFrame(render);
 
         window.addEventListener("wheel", handleWheel, { passive: false });
         window.addEventListener("touchstart", handleTouchStart, { passive: false });
         window.addEventListener("touchmove", handleTouchMove, { passive: false });
 
         return () => {
+            cancelAnimationFrame(animationFrameId);
             window.removeEventListener("wheel", handleWheel);
             window.removeEventListener("touchstart", handleTouchStart);
             window.removeEventListener("touchmove", handleTouchMove);

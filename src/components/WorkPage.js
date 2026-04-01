@@ -62,32 +62,53 @@ const WorkPage = () => {
     useEffect(() => {
         let element = ref.current;
         let scrollAmount = 0;
+        let touchStart = 0;
+
+        const updatePosition = (delta) => {
+            scrollAmount += delta;
+            const maxScroll = element.scrollWidth - window.innerWidth + 500;
+            
+            if (scrollAmount < 0) scrollAmount = 0;
+            if (scrollAmount > maxScroll) scrollAmount = maxScroll;
+
+            element.style.transform = `translateX(${-scrollAmount}px)`;
+            
+            if (reactIcon.current) {
+                reactIcon.current.style.transform = `rotate(${-scrollAmount}deg)`;
+            }
+        };
 
         const handleWheel = (e) => {
-            // DIRECTIONAL FILTER:
-            // Math.abs(e.deltaX) > Math.abs(e.deltaY) means the user is swiping sideways.
-            // We ONLY update if the horizontal intent is stronger than the vertical.
             if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-                scrollAmount += e.deltaX;
-
-                const maxScroll = element.scrollWidth - window.innerWidth + 500;
-                if (scrollAmount < 0) scrollAmount = 0;
-                if (scrollAmount > maxScroll) scrollAmount = maxScroll;
-
-                element.style.transform = `translateX(${-scrollAmount}px)`;
-                
-                if (reactIcon.current) {
-                    reactIcon.current.style.transform = `rotate(${-scrollAmount}deg)`;
-                }
+                updatePosition(e.deltaX);
             }
+            e.preventDefault();
+        };
+
+        // MOBILE TOUCH LOGIC
+        const handleTouchStart = (e) => {
+            touchStart = e.touches[0].clientX;
+        };
+
+        const handleTouchMove = (e) => {
+            let touchEnd = e.touches[0].clientX;
+            let touchDelta = touchStart - touchEnd;
             
-            // This prevents the whole page from "shaking" on mobile/touchpads
+            updatePosition(touchDelta * 1.2); // 1.2 is sensitivity
+            touchStart = touchEnd;
+            
             e.preventDefault();
         };
 
         window.addEventListener("wheel", handleWheel, { passive: false });
+        window.addEventListener("touchstart", handleTouchStart, { passive: false });
+        window.addEventListener("touchmove", handleTouchMove, { passive: false });
 
-        return () => window.removeEventListener("wheel", handleWheel);
+        return () => {
+            window.removeEventListener("wheel", handleWheel);
+            window.removeEventListener("touchstart", handleTouchStart);
+            window.removeEventListener("touchmove", handleTouchMove);
+        };
     }, []);
 
     return (
